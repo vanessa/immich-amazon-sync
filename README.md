@@ -21,17 +21,15 @@ Immich albums → (download originals) → Amazon Drive v1 API → Amazon Photos
 
 - An Immich instance with API access
 - An Amazon Prime account (Amazon Photos requires Prime)
-- Docker and Docker Compose
+- Docker
 
 ## Setup
 
-```bash
-git clone <repo-url>
-cd immich-amazon-sync
-cp .env.example .env
-```
+Create a directory and an `.env` file with your configuration (see [Configuration](#configuration) for all variables):
 
-Edit `.env` with your Immich URL, API key, album names, and Amazon cookies.
+```bash
+mkdir immich-amazon-sync && cd immich-amazon-sync
+```
 
 ### Getting Amazon Photos cookies
 
@@ -67,19 +65,51 @@ Set `AP_UBID_KEY` and `AP_AT_KEY` in your `.env` to match your region.
 ## Usage
 
 ```bash
-# Start the sync container
-docker compose up -d
-
-# Watch logs
-docker logs -f immich-sync
-
-# Force a sync right now
-docker compose restart
-
-# Trigger a full re-sync (re-uploads everything)
-rm data/state.json
-docker compose restart
+docker run -d \
+  --name immich-sync \
+  --restart unless-stopped \
+  --env-file .env \
+  -e SYNC_INTERVAL_HOURS=6 \
+  -v ./data:/data \
+  ghcr.io/vanessa/immich-amazon-sync:main
 ```
+
+View logs:
+
+```bash
+docker logs -f immich-sync
+```
+
+Force a sync now:
+
+```bash
+docker restart immich-sync
+```
+
+Full re-sync (re-uploads everything):
+
+```bash
+rm data/state.json
+docker restart immich-sync
+```
+
+<details>
+<summary>Docker Compose</summary>
+
+```yaml
+services:
+  immich-sync:
+    image: ghcr.io/vanessa/immich-amazon-sync:main
+    container_name: immich-sync
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SYNC_INTERVAL_HOURS=6
+    volumes:
+      - ./data:/data
+```
+
+</details>
 
 ### Configuration
 
@@ -113,12 +143,6 @@ Sync state is persisted in `data/state.json`, which maps Immich asset IDs to Ama
 - Delete `data/state.json` to force a full re-sync
 - Logs are written to `data/immich-sync.log` and stdout
 
-## Testing
-
-```bash
-python -m unittest tests/test_smoke.py
-```
-
 ## Limitations
 
 - **Cookie auth is fragile.** Amazon cookies expire and must be refreshed manually. There is no way around this - Amazon Photos has no OAuth or API key flow. When cookies expire, the container will log 401 errors until you update `.env` and restart.
@@ -127,11 +151,6 @@ python -m unittest tests/test_smoke.py
 - **Uploads go to root folder.** Amazon Drive v1 API doesn't reliably support folder targeting for all account types. Photos land in your Amazon Photos root.
 - **No content deduplication.** Dedup is by Immich asset ID, not file hash. Re-uploading the same photo with a different Immich ID will create a duplicate on Amazon.
 - **Deletion moves to trash.** Removed photos are trashed, not permanently deleted. Empty your Amazon Photos trash manually if needed.
-
-## Why not rclone / amazon-photos library?
-
-- **rclone**: Has no Amazon Photos backend. The old Amazon Drive backend was removed when Amazon shut down the Drive service (2023).
-- **amazon-photos (PyPI)**: Has asyncio/uvloop conflicts in Docker and bugs in TLD detection. After multiple attempts, direct HTTP calls proved more reliable.
 
 ## License
 
