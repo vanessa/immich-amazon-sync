@@ -1,0 +1,15 @@
+services:
+  immich-sync:
+    build: .
+    container_name: immich-sync
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SYNC_INTERVAL_HOURS=6
+    volumes:
+      - ./data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
