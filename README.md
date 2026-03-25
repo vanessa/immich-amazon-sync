@@ -16,19 +16,6 @@ Immich albums → (download originals) → Amazon Drive v1 API → Amazon Photos
 - Tracks which Immich assets map to which Amazon Photos node IDs
 - Photos removed from Immich albums are moved to Amazon Photos trash
 - Runs on a configurable interval (default: every 6 hours)
-- Zero external dependencies - Python stdlib only (`urllib.request`, `json`, `logging`)
-- Docker image uses Alpine with Python (~50MB) — no pip, no compiled deps
-
-## Project structure
-
-```
-src/immich_sync.py   # sync script (stdlib only)
-tests/test_smoke.py  # unit tests
-entrypoint.sh        # container loop runner
-Dockerfile           # Alpine + Python
-compose.yml          # Docker Compose config
-.env.example         # env var template
-```
 
 ## Requirements
 
@@ -74,7 +61,7 @@ Set `AP_UBID_KEY` and `AP_AT_KEY` in your `.env` to match your region.
 
 ### Getting an Immich API key
 
-1. Open your Immich instance → **User Settings** → **API Keys**
+1. Open your Immich instance → User Settings → API Keys
 2. Create a new key and copy it to `IMMICH_API_KEY` in `.env`
 
 ## Usage
@@ -131,8 +118,6 @@ Sync state is persisted in `data/state.json`, which maps Immich asset IDs to Ama
 ```bash
 python -m unittest tests/test_smoke.py
 ```
-
-No external test dependencies — uses only `unittest`.
 
 ## Limitations
 
