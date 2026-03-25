@@ -133,8 +133,6 @@ python -m unittest tests/test_smoke.py
 - **rclone**: Has no Amazon Photos backend. The old Amazon Drive backend was removed when Amazon shut down the Drive service (2023).
 - **amazon-photos (PyPI)**: Has asyncio/uvloop conflicts in Docker and bugs in TLD detection. After multiple attempts, direct HTTP calls proved more reliable.
 
-This tool uses only Python's standard library (`urllib.request`) - no `pip install`, no compiled dependencies, no Docker build surprises.
-
 ## License
 
 MIT
