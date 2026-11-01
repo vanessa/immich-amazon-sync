@@ -1,5 +1,6 @@
 """End-to-end tests for immich_sync.main() with all HTTP mocked at urlopen."""
 
+import gzip
 import io
 import json
 import os
@@ -55,6 +56,7 @@ class Backend:
         self.album_children = {}  # album node id -> set(node ids)
         self.trashed = set()
         self.trash_rejects = set()  # nodes for which PATCH /trash fails with 400
+        self.gzip_children = False  # answer PATCH .../children gzip-compressed, as amazon.de does
         self.calls = []  # (method, url, body)
         self._n = 0
 
@@ -174,6 +176,9 @@ class Backend:
                 children.update(body["value"])
             else:
                 children.difference_update(body["value"])
+            if self.gzip_children:
+                raw = gzip.compress(json.dumps({"op": body["op"]}).encode())
+                return FakeResponse(raw, {"Content-Length": str(len(raw)), "Content-Encoding": "gzip"})
             return FakeResponse({})
         if method == "PATCH" and path == "trash":
             assert body["op"] == "add"
@@ -254,6 +259,16 @@ class TestImmichSearch(SyncTestCase):
 
 
 class TestFullSync(SyncTestCase):
+    def test_gzip_reply_to_album_add_counts_as_success(self):
+        ids = [aid(i) for i in range(1, 4)]
+        self.backend.add_album("Echo", ids)
+        self.backend.gzip_children = True
+        self.assertEqual(self.run_sync(), immich_sync.EXIT_OK)
+        state = self.state()
+        self.assertEqual(state["pending_album_add"], [])
+        self.assertEqual(self.backend.album_children[state["album_node_id"]], set(state["synced"].values()))
+        self.assertNotIn("codec", self.output)
+
     def test_upload_into_album_then_idempotent(self):
         ids = [aid(i) for i in range(1, 4)]
         self.backend.add_album("Echo", ids)

@@ -16,6 +16,7 @@ Features:
   - Region aware: amazon.de by default, any TLD via AP_TLD
 """
 
+import gzip
 import hashlib
 import json
 import logging
@@ -351,7 +352,13 @@ def _request(
     """Make an HTTP request and return the response body. Raises on non-2xx."""
     req = Request(url, data=data, headers=headers or {}, method=method)
     with urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+        body = resp.read()
+        encoding = (resp.headers.get("Content-Encoding") or "").strip().lower()
+    # amazon.de answers some writes (PATCH .../children) gzip-compressed without being asked to,
+    # and urllib does not decode that. The request itself succeeded; only reading the reply failed.
+    if encoding == "gzip" or body[:2] == b"\x1f\x8b":
+        body = gzip.decompress(body)
+    return body
 
 
 def _json_request(
